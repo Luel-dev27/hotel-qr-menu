@@ -97,9 +97,9 @@ Copy `.env.example` and set real values for production:
 - `POSTGRES_PASSWORD`
 - `APP_PORT`
 
-## Recommended production deployment
+## Production deployment
 
-The recommended path in this repo is:
+The in this repo is:
 
 - `Docker Compose`
 - `PostgreSQL`
@@ -109,13 +109,6 @@ The recommended path in this repo is:
 ## Render deployment
 
 This repo is now prepared for Render with a Blueprint file at [render.yaml](/home/dark/projects/scanner/render.yaml:1).
-
-### Why this is the recommended Render path
-
-- It uses a Render web service plus Render Postgres.
-- Render automatically provides HTTPS on the `onrender.com` subdomain and on custom domains.
-- Render automatically redirects incoming HTTP traffic to HTTPS.
-- The app now auto-detects Render's external hostname and URL for Django host and CSRF handling.
 
 ### Deploy on Render
 
@@ -129,14 +122,6 @@ This repo is now prepared for Render with a Blueprint file at [render.yaml](/hom
    - `DJANGO_CORS_ALLOWED_ORIGINS`
    - `DJANGO_CSRF_TRUSTED_ORIGINS`
 
-For the first deploy, a good starting point is:
-
-- `DJANGO_ALLOWED_HOSTS`: `your-service.onrender.com`
-- `DJANGO_CORS_ALLOWED_ORIGINS`: `https://your-service.onrender.com`
-- `DJANGO_CSRF_TRUSTED_ORIGINS`: `https://your-service.onrender.com`
-
-If you later attach a custom domain like `menu.example.com`, update them to include that domain too.
-
 ### After deploy
 
 Create the first admin user from the Render Shell:
@@ -147,13 +132,13 @@ python /app/backend/manage.py createsuperuser
 
 Then use:
 
-- Guest menu: `https://your-service.onrender.com/`
-- Hotel staff admin: `https://your-service.onrender.com/admin`
-- Django system admin: `https://your-service.onrender.com/manage/`
+- Guest menu: `https://my-service.onrender.com/`
+- Hotel staff admin: `https://my-service.onrender.com/admin`
+- Django system admin: `https://my-service.onrender.com/manage/`
 
 ### Custom domain and HTTPS
 
-Add your custom domain in the Render Dashboard under your web service settings. Render will:
+Add my custom domain in the Render Dashboard under your web service settings. Render will:
 
 - issue and renew the TLS certificate for you
 - keep HTTPS enabled automatically
