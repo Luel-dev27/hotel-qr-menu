@@ -1,0 +1,16 @@
+[Unit]
+Description=Scanner Django application
+After=network.target
+
+[Service]
+Type=simple
+User=www-data
+Group=www-data
+WorkingDirectory=/opt/scanner/backend
+EnvironmentFile=/opt/scanner/.env
+ExecStart=/opt/scanner/backend/.venv/bin/gunicorn config.wsgi:application --chdir /opt/scanner/backend --bind 127.0.0.1:8000 --workers 3
+Restart=always
+RestartSec=5
+
+[Install]
+WantedBy=multi-user.target
