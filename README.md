@@ -23,15 +23,15 @@ It includes:
 
 ## Demo staff login
 
-<<<<<<< HEAD
+
 - Username:
 - Password:
-=======
+
 For local development only:
 
 - Username: `admin`
 - Password: `admin123`
->>>>>>> 657cb5a (update Readme)
+
 
 For production, create a real staff account and remove any shared demo credentials.
 
@@ -109,11 +109,10 @@ Copy `.env.example` and set real values for production:
 
 ## Production deployment
 
-<<<<<<< HEAD
+
 The in this repo is:
-=======
+
 The production setup included in this repository uses:
->>>>>>> 657cb5a (update Readme)
 
 - `Docker Compose`
 - `PostgreSQL`
@@ -124,8 +123,7 @@ The production setup included in this repository uses:
 
 This repository includes a Render Blueprint file at [render.yaml](/home/dark/projects/scanner/render.yaml:1).
 
-<<<<<<< HEAD
-=======
+
 ### Why I prepared a Render setup
 
 - It uses a Render web service and Render PostgreSQL.
@@ -133,7 +131,7 @@ This repository includes a Render Blueprint file at [render.yaml](/home/dark/pro
 - Render automatically redirects HTTP traffic to HTTPS.
 - The app is configured to work with Render host and CSRF handling.
 
->>>>>>> 657cb5a (update Readme)
+
 ### Deploy on Render
 
 1. Push this repository to GitHub, GitLab, or Bitbucket.
@@ -146,9 +144,8 @@ This repository includes a Render Blueprint file at [render.yaml](/home/dark/pro
    - `DJANGO_CORS_ALLOWED_ORIGINS`
    - `DJANGO_CSRF_TRUSTED_ORIGINS`
 
-<<<<<<< HEAD
-=======
-Use your real Render subdomain or your real custom domain.
+
+Use your real Render subdomain or the real custom domain.
 
 Example:
 
@@ -159,7 +156,7 @@ Example:
 
 If I later connect a custom domain such as `menu.myhotel.com`, I should update these values to include that real domain too.
 
->>>>>>> 657cb5a (update Readme)
+
 ### After deploy
 
 Create the first admin user from the Render Shell:
@@ -170,7 +167,7 @@ python /app/backend/manage.py createsuperuser
 
 Then open the live app using the actual domain connected to the deployment.
 
-<<<<<<< HEAD
+
 - Guest menu: `https://my-service.onrender.com/`
 - Hotel staff admin: `https://my-service.onrender.com/admin`
 - Django system admin: `https://my-service.onrender.com/manage/`
@@ -178,7 +175,7 @@ Then open the live app using the actual domain connected to the deployment.
 ### Custom domain and HTTPS
 
 Add my custom domain in the Render Dashboard under your web service settings. Render will:
-=======
+
 Example:
 
 - Guest menu: `https://scanner-web.onrender.com/`
@@ -189,7 +186,7 @@ Example:
 ### Custom domain and HTTPS
 
 Add the custom domain in the Render dashboard under the web service settings. Render will:
->>>>>>> 657cb5a (update Readme)
+
 
 - issue and renew TLS certificates automatically
 - keep HTTPS enabled automatically
