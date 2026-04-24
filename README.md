@@ -20,8 +20,8 @@ This project is a hotel menu system with:
 
 ## Demo staff login
 
-- Username: `admin`
-- Password: `admin123`
+- Username:
+- Password:
 
 Use the demo login for local development only. In production, create a real staff user and remove any shared demo credentials.
 
