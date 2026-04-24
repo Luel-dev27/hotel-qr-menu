@@ -1,17 +1,20 @@
 # Hotel QR Menu System
 
-This project is a hotel menu system with:
+This is a hotel QR menu system I built with a React frontend and a Django backend.
+
+It includes:
 
 - a public guest menu
 - a protected staff workspace
 - one hotel QR code that opens the guest menu
 
-## Current behavior
+## How it works
 
-- Guests scan one hotel QR code and land on the public menu
-- Staff manage menu items and categories from `/admin`
-- Django API routes stay under `/api/...`
-- Django's built-in admin is available at `/django-admin/`
+- Guests scan one hotel QR code and land on the public menu.
+- Staff log in to `/admin` to manage menu items and categories.
+- API routes are available under `/api/...`.
+- Django's built-in admin is available at `/django-admin/`.
+- `/manage/` is only a shortcut that redirects to `/django-admin/`.
 
 ## Tech stack
 
@@ -20,12 +23,19 @@ This project is a hotel menu system with:
 
 ## Demo staff login
 
+<<<<<<< HEAD
 - Username:
 - Password:
+=======
+For local development only:
 
-Use the demo login for local development only. In production, create a real staff user and remove any shared demo credentials.
+- Username: `admin`
+- Password: `admin123`
+>>>>>>> 657cb5a (update Readme)
 
-## Development
+For production, create a real staff account and remove any shared demo credentials.
+
+## Local development
 
 Start the backend:
 
@@ -61,7 +71,7 @@ Start the production server:
 npm run start:prod
 ```
 
-This serves:
+This setup serves:
 
 - the React app from Django
 - API routes from Django
@@ -99,7 +109,11 @@ Copy `.env.example` and set real values for production:
 
 ## Production deployment
 
+<<<<<<< HEAD
 The in this repo is:
+=======
+The production setup included in this repository uses:
+>>>>>>> 657cb5a (update Readme)
 
 - `Docker Compose`
 - `PostgreSQL`
@@ -108,20 +122,44 @@ The in this repo is:
 
 ## Render deployment
 
-This repo is now prepared for Render with a Blueprint file at [render.yaml](/home/dark/projects/scanner/render.yaml:1).
+This repository includes a Render Blueprint file at [render.yaml](/home/dark/projects/scanner/render.yaml:1).
 
+<<<<<<< HEAD
+=======
+### Why I prepared a Render setup
+
+- It uses a Render web service and Render PostgreSQL.
+- Render automatically provides HTTPS for both `onrender.com` subdomains and custom domains.
+- Render automatically redirects HTTP traffic to HTTPS.
+- The app is configured to work with Render host and CSRF handling.
+
+>>>>>>> 657cb5a (update Readme)
 ### Deploy on Render
 
 1. Push this repository to GitHub, GitLab, or Bitbucket.
-2. In Render, open `Blueprints` and create a new Blueprint from this repo.
+2. In Render, open `Blueprints` and create a new Blueprint from this repository.
 3. Render will create:
    - `scanner-web` as the web service
    - `scanner-db` as the PostgreSQL database
-4. During the first Blueprint apply, set these prompted values:
+4. During the first Blueprint apply, set these values:
    - `DJANGO_ALLOWED_HOSTS`
    - `DJANGO_CORS_ALLOWED_ORIGINS`
    - `DJANGO_CSRF_TRUSTED_ORIGINS`
 
+<<<<<<< HEAD
+=======
+Use your real Render subdomain or your real custom domain.
+
+Example:
+
+- If Render gives the web service URL `https://scanner-web.onrender.com`
+- then set `DJANGO_ALLOWED_HOSTS` to `scanner-web.onrender.com`
+- set `DJANGO_CORS_ALLOWED_ORIGINS` to `https://scanner-web.onrender.com`
+- set `DJANGO_CSRF_TRUSTED_ORIGINS` to `https://scanner-web.onrender.com`
+
+If I later connect a custom domain such as `menu.myhotel.com`, I should update these values to include that real domain too.
+
+>>>>>>> 657cb5a (update Readme)
 ### After deploy
 
 Create the first admin user from the Render Shell:
@@ -130,8 +168,9 @@ Create the first admin user from the Render Shell:
 python /app/backend/manage.py createsuperuser
 ```
 
-Then use:
+Then open the live app using the actual domain connected to the deployment.
 
+<<<<<<< HEAD
 - Guest menu: `https://my-service.onrender.com/`
 - Hotel staff admin: `https://my-service.onrender.com/admin`
 - Django system admin: `https://my-service.onrender.com/manage/`
@@ -139,10 +178,24 @@ Then use:
 ### Custom domain and HTTPS
 
 Add my custom domain in the Render Dashboard under your web service settings. Render will:
+=======
+Example:
 
-- issue and renew the TLS certificate for you
+- Guest menu: `https://scanner-web.onrender.com/`
+- Staff workspace: `https://scanner-web.onrender.com/admin`
+- Django admin: `https://scanner-web.onrender.com/django-admin/`
+- Django admin shortcut: `https://scanner-web.onrender.com/manage/`
+
+### Custom domain and HTTPS
+
+Add the custom domain in the Render dashboard under the web service settings. Render will:
+>>>>>>> 657cb5a (update Readme)
+
+- issue and renew TLS certificates automatically
 - keep HTTPS enabled automatically
 - redirect HTTP to HTTPS automatically
+
+## Docker deployment
 
 ### 1. Prepare the environment
 
@@ -153,10 +206,10 @@ cp .env.example .env
 Then edit `.env` and set:
 
 - a real `DJANGO_SECRET_KEY`
-- your real domain in `DJANGO_ALLOWED_HOSTS`
-- your HTTPS origin in `DJANGO_CORS_ALLOWED_ORIGINS`
-- your HTTPS origin in `DJANGO_CSRF_TRUSTED_ORIGINS`
-- strong `POSTGRES_PASSWORD`
+- the real domain in `DJANGO_ALLOWED_HOSTS`
+- the real HTTPS origin in `DJANGO_CORS_ALLOWED_ORIGINS`
+- the real HTTPS origin in `DJANGO_CSRF_TRUSTED_ORIGINS`
+- a strong `POSTGRES_PASSWORD`
 
 ### 2. Start the stack
 
@@ -181,9 +234,14 @@ docker compose exec web python /app/backend/manage.py createsuperuser
 
 ### 4. Open the app
 
-- Guest menu: `http://your-server/`
-- Staff workspace: `http://your-server/admin`
-- Django admin alias: `http://your-server/manage/`
+Use the real server address for the machine or domain where the app is deployed.
+
+Example if running on a server with domain `menu.myhotel.com`:
+
+- Guest menu: `http://menu.myhotel.com/`
+- Staff workspace: `http://menu.myhotel.com/admin`
+- Django admin: `http://menu.myhotel.com/django-admin/`
+- Django admin shortcut: `http://menu.myhotel.com/manage/`
 
 ### 5. Useful commands
 
@@ -193,24 +251,24 @@ npm run docker:down
 docker compose ps
 ```
 
-## Legacy/manual deploy checklist
+## Legacy manual deployment checklist
 
-1. Install Python dependencies from `backend/requirements.txt`
-2. Install Node dependencies with `npm install`
-3. Copy `.env.example` to `.env` and set production env vars
-4. Run `backend/.venv/bin/python backend/manage.py migrate`
+1. Install Python dependencies from `backend/requirements.txt`.
+2. Install Node dependencies with `npm install`.
+3. Copy `.env.example` to `.env` and set production environment variables.
+4. Run `backend/.venv/bin/python backend/manage.py migrate`.
 5. Create a real staff user:
 
 ```bash
 backend/.venv/bin/python backend/manage.py createsuperuser
 ```
 
-6. Run `npm run build:prod`
-7. Run `backend/.venv/bin/python backend/manage.py check --deploy`
-8. Start with `npm run start:prod`
-9. Put Nginx, Caddy, or another reverse proxy in front for HTTPS and forwarded headers
+6. Run `npm run build:prod`.
+7. Run `backend/.venv/bin/python backend/manage.py check --deploy`.
+8. Start the app with `npm run start:prod`.
+9. Put Nginx, Caddy, or another reverse proxy in front for HTTPS and forwarded headers.
 
-Example deploy assets:
+Example deployment assets:
 
 - `deploy/scanner.service.example`
 - `deploy/nginx.scanner.conf.example`
@@ -218,10 +276,10 @@ Example deploy assets:
 ## Production notes
 
 - `/admin` is the hotel staff workspace and only staff users should be allowed to log in.
-- `/manage/` redirects to Django's built-in admin for system administration.
-- The API now expects valid CSRF protection on write actions, which the built frontend sends automatically.
+- `/manage/` redirects to Django's built-in admin at `/django-admin/`.
+- The API expects valid CSRF protection on write actions, and the built frontend sends it automatically.
 - The QR endpoint is restricted to generating links for the current deployed site.
-- If you terminate TLS at a reverse proxy, keep `DJANGO_USE_X_FORWARDED_PROTO=True` so Django correctly treats requests as HTTPS.
+- If TLS is terminated at a reverse proxy, keep `DJANGO_USE_X_FORWARDED_PROTO=True` so Django correctly treats requests as HTTPS.
 - The container stack exposes Nginx on `APP_PORT` and proxies requests to Django internally.
 - A health endpoint is available at `/api/health`.
 
@@ -230,3 +288,4 @@ Example deploy assets:
 - Guest menu: `/`
 - Staff workspace: `/admin`
 - Django admin: `/django-admin/`
+- Django admin shortcut: `/manage/`
