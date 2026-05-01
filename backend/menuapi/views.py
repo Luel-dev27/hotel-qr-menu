@@ -214,6 +214,12 @@ def upload_menu_image(request):
 @require_http_methods(['POST'])
 def auth_login(request):
     payload = parse_json(request)
+    restaurant_slug = str(payload.get('restaurantSlug', '')).strip()
+    restaurant = Restaurant.objects.filter(slug=restaurant_slug).first() if restaurant_slug else None
+
+    if restaurant_slug and not restaurant:
+        return json_error('Restaurant not found. Check the restaurant slug in the URL.', status=404)
+
     user = authenticate(
         request,
         username=payload.get('username', ''),
@@ -224,6 +230,8 @@ def auth_login(request):
         return json_error('Invalid username or password.', status=401)
     if not user.is_staff:
         return json_error('Staff access required.', status=403)
+    if restaurant and not user.is_superuser and not restaurant.admins.filter(id=user.id).exists():
+        return json_error('This staff user is not assigned to this restaurant.', status=403)
 
     login(request, user)
     return JsonResponse({'admin': serialize_admin(user)})

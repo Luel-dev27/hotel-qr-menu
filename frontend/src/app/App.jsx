@@ -293,14 +293,17 @@ export default function App() {
     try {
       const payload = await apiFetch('/api/auth/login', {
         method: 'POST',
-        body: JSON.stringify(loginForm),
+        body: JSON.stringify({
+          ...loginForm,
+          restaurantSlug: restaurant?.slug || requestedRestaurantSlug || '',
+        }),
       })
 
       setAdmin(payload.admin)
       setStatusMessage(`Welcome back, ${payload.admin.name}.`)
 
       if (typeof window !== 'undefined') {
-        if (!/^\/admin\/?$/i.test(window.location.pathname)) {
+        if (!/^\/admin(?:\/[a-z0-9-]+)?\/?$/i.test(window.location.pathname)) {
           window.location.assign(`${adminHref}#admin-panel`)
           return
         }

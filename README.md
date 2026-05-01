@@ -33,11 +33,12 @@ The system supports multiple restaurants on one deployment. Each restaurant has 
 
 1. Sign in as the system admin at `/django-admin/`.
 2. Open `Restaurants` and create a restaurant. Set the name, slug, tagline, currency, and hero message.
-3. In the restaurant form, assign the staff users who can manage that restaurant in the `admins` field.
-4. Save the restaurant. A default QR/table record is created automatically.
-5. Add categories for that restaurant.
-6. Give the restaurant staff this URL: `/admin/<restaurant-slug>`.
-7. Give customers or printed QR codes this URL: `/r/<restaurant-slug>`.
+3. In the same restaurant form, use `Create or reset restaurant staff login` to create the username and password for that restaurant admin.
+4. You can also assign existing staff users who can manage that restaurant in the `admins` field.
+5. Save the restaurant. A default QR/table record is created automatically.
+6. Add categories for that restaurant.
+7. Give the restaurant staff this URL: `/admin/<restaurant-slug>`.
+8. Give customers or printed QR codes this URL: `/r/<restaurant-slug>`.
 
 Example for a restaurant with slug `blue-cafe`:
 
