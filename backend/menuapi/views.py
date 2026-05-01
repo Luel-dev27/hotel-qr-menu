@@ -228,7 +228,7 @@ def upload_menu_image(request):
 def auth_login(request):
     payload = parse_json(request)
     restaurant_slug = str(payload.get('restaurantSlug', '')).strip()
-    restaurant = Restaurant.objects.filter(slug=restaurant_slug).first() if restaurant_slug else None
+    restaurant = get_requested_restaurant(request) if restaurant_slug else None
 
     if restaurant_slug and not restaurant:
         return json_error('Restaurant not found. Check the restaurant slug in the URL.', status=404)
