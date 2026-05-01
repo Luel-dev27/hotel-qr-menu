@@ -147,6 +147,14 @@ export default function App() {
   }, [requestedRestaurantSlug])
 
   useEffect(() => {
+    if (typeof document === 'undefined') {
+      return
+    }
+
+    document.title = restaurant?.name ? `${restaurant.name} QR Menu` : 'Hotel QR Menu'
+  }, [restaurant?.name])
+
+  useEffect(() => {
     if (typeof window === 'undefined') {
       return
     }
