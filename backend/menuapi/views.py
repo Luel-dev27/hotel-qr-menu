@@ -19,7 +19,8 @@ from .models import Category, MenuItem, Restaurant, Table
 
 
 User = get_user_model()
-ALLOWED_IMAGE_TYPES = {'image/jpeg', 'image/png', 'image/webp', 'image/gif'}
+ALLOWED_IMAGE_TYPES = {'image/avif', 'image/gif', 'image/jpeg', 'image/png', 'image/webp'}
+ALLOWED_IMAGE_EXTENSIONS = {'avif', 'gif', 'jpeg', 'jpg', 'png', 'webp'}
 MAX_IMAGE_SIZE = 5 * 1024 * 1024
 
 
@@ -121,8 +122,8 @@ def serialize_table(table):
     }
 
 
-def build_absolute_media_url(request, path):
-    return request.build_absolute_uri(default_storage.url(path))
+def build_media_url(path):
+    return default_storage.url(path)
 
 
 @ensure_csrf_cookie
@@ -195,17 +196,19 @@ def upload_menu_image(request):
     if not isinstance(image, UploadedFile):
         return json_error('Choose an image file to upload.')
 
-    if image.content_type not in ALLOWED_IMAGE_TYPES:
-        return json_error('Upload a JPG, PNG, WebP, or GIF image.')
+    filename = get_valid_filename(image.name)
+    extension = filename.rsplit('.', 1)[-1].lower() if '.' in filename else ''
+
+    if image.content_type not in ALLOWED_IMAGE_TYPES and extension not in ALLOWED_IMAGE_EXTENSIONS:
+        return json_error('Upload an AVIF, JPG, PNG, WebP, or GIF image.')
 
     if image.size > MAX_IMAGE_SIZE:
         return json_error('Image must be 5 MB or smaller.')
 
-    filename = get_valid_filename(image.name)
-    extension = filename.rsplit('.', 1)[-1].lower() if '.' in filename else 'jpg'
+    extension = extension or 'jpg'
     saved_path = default_storage.save(f'menu-items/{uuid4().hex}.{extension}', image)
 
-    return JsonResponse({'imageUrl': build_absolute_media_url(request, saved_path)}, status=201)
+    return JsonResponse({'imageUrl': build_media_url(saved_path)}, status=201)
 
 
 @require_http_methods(['POST'])
