@@ -71,6 +71,18 @@ function buildAbsoluteUrl(path) {
   return new URL(path, window.location.origin).toString()
 }
 
+function formatSlug(slug) {
+  if (!slug) {
+    return ''
+  }
+
+  return slug
+    .split('-')
+    .filter(Boolean)
+    .map((part) => part.charAt(0).toUpperCase() + part.slice(1))
+    .join(' ')
+}
+
 function moveItem(array, index, delta) {
   const nextIndex = index + delta
 
@@ -175,10 +187,20 @@ export default function App() {
     return tables[0] || null
   }, [tableSlug, tables])
 
-  const currentTableLabel = currentTable?.label || 'Hotel Menu'
   const adminView = isAdminView()
-  const guestMenuHref = restaurant?.slug ? `/r/${restaurant.slug}` : currentTable?.path || '/'
-  const adminHref = restaurant?.slug ? `/admin/${restaurant.slug}` : '/admin'
+  const activeRestaurantSlug = restaurant?.slug || requestedRestaurantSlug || ''
+  const fallbackRestaurantName = formatSlug(activeRestaurantSlug) || 'Restaurant'
+  const guestMenuHref = activeRestaurantSlug ? `/r/${activeRestaurantSlug}` : currentTable?.path || '/'
+  const adminHref = activeRestaurantSlug ? `/admin/${activeRestaurantSlug}` : '/admin'
+  const displayTable =
+    currentTable ||
+    (activeRestaurantSlug
+      ? {
+          label: `${fallbackRestaurantName} Menu`,
+          path: `/r/${activeRestaurantSlug}`,
+        }
+      : null)
+  const currentTableLabel = displayTable?.label || 'Hotel Menu'
   const tableLinks = useMemo(
     () =>
       tables.map((table) => {
@@ -545,8 +567,8 @@ export default function App() {
     }
   }
 
-  const heroEyebrow = adminView ? `${restaurant?.name || 'Restaurant'} Staff Access` : `Welcome to ${restaurant?.name || 'the Restaurant'}`
-  const heroTitle = adminView ? `${restaurant?.name || 'Restaurant'} Admin` : restaurant?.name || 'Restaurant Menu System'
+  const heroEyebrow = adminView ? `${restaurant?.name || fallbackRestaurantName} Staff Access` : `Welcome to ${restaurant?.name || fallbackRestaurantName}`
+  const heroTitle = adminView ? `${restaurant?.name || fallbackRestaurantName} Admin` : restaurant?.name || `${fallbackRestaurantName} Menu`
   const heroText = adminView
     ? 'Sign in to manage dishes, keep categories organized, and print live QR codes for every table without exposing hotel staff tools to guests.'
     : 'Discover signature dishes, fresh breakfast favorites, and table-side service designed to make every stay at the hotel feel easy, warm, and memorable.'
@@ -624,7 +646,7 @@ export default function App() {
 
         <section className="panel hero-visual">
           <QrShowcase
-            table={currentTable}
+            table={displayTable}
             featuredItems={featuredItems}
             qrImageUrl={currentTableLink?.qrImageUrl}
           />

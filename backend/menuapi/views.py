@@ -9,6 +9,7 @@ from django.core.files.storage import default_storage
 from django.core.files.uploadedfile import UploadedFile
 from django.middleware.csrf import get_token
 from django.http import HttpResponse, JsonResponse
+from django.utils.text import slugify
 from django.utils.text import get_valid_filename
 from django.views.decorators.csrf import ensure_csrf_cookie
 from django.views.decorators.http import require_GET, require_http_methods
@@ -57,7 +58,19 @@ def get_requested_restaurant(request):
 
     queryset = Restaurant.objects.all()
     if slug:
-        return queryset.filter(slug=slug).first()
+        normalized_slug = slugify(slug)
+        restaurant = (
+            queryset.filter(slug__iexact=slug).first()
+            or queryset.filter(slug__iexact=normalized_slug).first()
+        )
+        if restaurant:
+            return restaurant
+
+        for item in queryset.only('id', 'name', 'slug'):
+            if slugify(item.name) == normalized_slug:
+                return item
+
+        return None
     return queryset.order_by('id').first()
 
 

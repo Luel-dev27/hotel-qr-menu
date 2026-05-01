@@ -1,6 +1,7 @@
 from django import forms
 from django.contrib import admin
 from django.contrib.auth import get_user_model
+from django.utils.html import format_html
 
 from .models import Category, MenuItem, Restaurant, Table
 
@@ -40,12 +41,22 @@ class RestaurantAdminForm(forms.ModelForm):
 @admin.register(Restaurant)
 class RestaurantAdmin(admin.ModelAdmin):
     form = RestaurantAdminForm
-    list_display = ('name', 'slug', 'currency')
+    list_display = ('name', 'slug', 'currency', 'guest_menu_link', 'staff_workspace_link')
     prepopulated_fields = {'slug': ('name',)}
     filter_horizontal = ('admins',)
+    readonly_fields = ('guest_menu_link', 'staff_workspace_link')
     fieldsets = (
         (None, {
-            'fields': ('name', 'slug', 'tagline', 'currency', 'hero_message', 'admins'),
+            'fields': (
+                'name',
+                'slug',
+                'tagline',
+                'currency',
+                'hero_message',
+                'admins',
+                'guest_menu_link',
+                'staff_workspace_link',
+            ),
         }),
         ('Create or reset restaurant staff login', {
             'fields': ('staff_username', 'staff_password', 'staff_email'),
@@ -74,6 +85,20 @@ class RestaurantAdmin(admin.ModelAdmin):
                 user.set_password(password)
             user.save()
             obj.admins.add(user)
+
+    @admin.display(description='Guest menu URL')
+    def guest_menu_link(self, obj):
+        if not obj or not obj.slug:
+            return 'Save the restaurant to create the URL.'
+        url = f'/r/{obj.slug}'
+        return format_html('<a href="{}" target="_blank">{}</a>', url, url)
+
+    @admin.display(description='Staff workspace URL')
+    def staff_workspace_link(self, obj):
+        if not obj or not obj.slug:
+            return 'Save the restaurant to create the URL.'
+        url = f'/admin/{obj.slug}'
+        return format_html('<a href="{}" target="_blank">{}</a>', url, url)
 
 
 @admin.register(Category)
