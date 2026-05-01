@@ -43,6 +43,15 @@ function getTableSlug() {
   return params.get('table')
 }
 
+function getRestaurantSlug() {
+  if (typeof window === 'undefined') {
+    return null
+  }
+
+  const pathMatch = window.location.pathname.match(/^\/(?:r|admin)\/([a-z0-9-]+)\/?$/i)
+  return pathMatch ? pathMatch[1] : null
+}
+
 function isAdminView() {
   if (typeof window === 'undefined') {
     return false
@@ -51,7 +60,7 @@ function isAdminView() {
   const { pathname, search } = window.location
   const params = new URLSearchParams(search)
 
-  return /^\/admin\/?$/i.test(pathname) || params.get('view') === 'admin'
+  return /^\/admin(?:\/[a-z0-9-]+)?\/?$/i.test(pathname) || params.get('view') === 'admin'
 }
 
 function buildAbsoluteUrl(path) {
@@ -91,12 +100,24 @@ export default function App() {
   const [errorMessage, setErrorMessage] = useState('')
   const [isLoading, setIsLoading] = useState(true)
   const [isSubmitting, setIsSubmitting] = useState(false)
+  const [isUploadingImage, setIsUploadingImage] = useState(false)
+  const requestedRestaurantSlug = getRestaurantSlug()
+
+  function restaurantApiPath(path) {
+    if (!restaurant?.slug && !requestedRestaurantSlug) {
+      return path
+    }
+
+    const slug = restaurant?.slug || requestedRestaurantSlug
+    const separator = path.includes('?') ? '&' : '?'
+    return `${path}${separator}restaurant=${encodeURIComponent(slug)}`
+  }
 
   useEffect(() => {
     async function bootstrap() {
       try {
         const [bootstrapPayload, mePayload] = await Promise.all([
-          apiFetch('/api/bootstrap'),
+          apiFetch(requestedRestaurantSlug ? `/api/bootstrap?restaurant=${encodeURIComponent(requestedRestaurantSlug)}` : '/api/bootstrap'),
           apiFetch('/api/auth/me').catch(() => null),
         ])
 
@@ -123,7 +144,7 @@ export default function App() {
     }
 
     bootstrap()
-  }, [])
+  }, [requestedRestaurantSlug])
 
   useEffect(() => {
     if (typeof window === 'undefined') {
@@ -131,10 +152,10 @@ export default function App() {
     }
 
     const params = new URLSearchParams(window.location.search)
-    if (params.get('view') === 'admin' && !/^\/admin\/?$/i.test(window.location.pathname)) {
-      window.history.replaceState({}, '', '/admin')
+    if (params.get('view') === 'admin' && !/^\/admin(?:\/[a-z0-9-]+)?\/?$/i.test(window.location.pathname)) {
+      window.history.replaceState({}, '', requestedRestaurantSlug ? `/admin/${requestedRestaurantSlug}` : '/admin')
     }
-  }, [])
+  }, [requestedRestaurantSlug])
 
   const tableSlug = getTableSlug()
 
@@ -148,7 +169,8 @@ export default function App() {
 
   const currentTableLabel = currentTable?.label || 'Hotel Menu'
   const adminView = isAdminView()
-  const guestMenuHref = currentTable?.path || '/'
+  const guestMenuHref = restaurant?.slug ? `/r/${restaurant.slug}` : currentTable?.path || '/'
+  const adminHref = restaurant?.slug ? `/admin/${restaurant.slug}` : '/admin'
   const tableLinks = useMemo(
     () =>
       tables.map((table) => {
@@ -216,6 +238,37 @@ export default function App() {
     }))
   }
 
+  async function handleImageUpload(event) {
+    const [file] = event.target.files
+    if (!file) {
+      return
+    }
+
+    clearMessages()
+    setIsUploadingImage(true)
+
+    const uploadForm = new FormData()
+    uploadForm.append('image', file)
+
+    try {
+      const response = await apiFetch(restaurantApiPath('/api/menu/images'), {
+        method: 'POST',
+        body: uploadForm,
+      })
+
+      setForm((current) => ({
+        ...current,
+        image: response.imageUrl,
+      }))
+      setStatusMessage('Image uploaded. Save the item to use it on the menu.')
+    } catch (error) {
+      setErrorMessage(error.message)
+    } finally {
+      setIsUploadingImage(false)
+      event.target.value = ''
+    }
+  }
+
   function handleCategoryFormChange(event) {
     const { name, value } = event.target
     setCategoryForm((current) => ({
@@ -240,7 +293,7 @@ export default function App() {
 
       if (typeof window !== 'undefined') {
         if (!/^\/admin\/?$/i.test(window.location.pathname)) {
-          window.location.assign('/admin#admin-panel')
+          window.location.assign(`${adminHref}#admin-panel`)
           return
         }
 
@@ -280,9 +333,9 @@ export default function App() {
 
     try {
       if (editingId) {
-        const response = await apiFetch(`/api/menu/${editingId}`, {
+        const response = await apiFetch(restaurantApiPath(`/api/menu/${editingId}`), {
           method: 'PUT',
-          body: JSON.stringify(payload),
+          body: JSON.stringify({ ...payload, restaurantSlug: restaurant?.slug }),
         })
 
         setMenuItems((current) =>
@@ -290,9 +343,9 @@ export default function App() {
         )
         setStatusMessage('Menu item updated.')
       } else {
-        const response = await apiFetch('/api/menu', {
+        const response = await apiFetch(restaurantApiPath('/api/menu'), {
           method: 'POST',
-          body: JSON.stringify(payload),
+          body: JSON.stringify({ ...payload, restaurantSlug: restaurant?.slug }),
         })
 
         setMenuItems((current) => [response.menuItem, ...current])
@@ -327,7 +380,7 @@ export default function App() {
     setIsSubmitting(true)
 
     try {
-      await apiFetch(`/api/menu/${id}`, { method: 'DELETE' })
+      await apiFetch(restaurantApiPath(`/api/menu/${id}`), { method: 'DELETE' })
       setMenuItems((current) => current.filter((item) => item.id !== id))
 
       if (editingId === id) {
@@ -347,10 +400,11 @@ export default function App() {
     setIsSubmitting(true)
 
     try {
-      const response = await apiFetch(`/api/menu/${item.id}`, {
+      const response = await apiFetch(restaurantApiPath(`/api/menu/${item.id}`), {
         method: 'PUT',
         body: JSON.stringify({
           ...item,
+          restaurantSlug: restaurant?.slug,
           available: !item.available,
         }),
       })
@@ -372,9 +426,9 @@ export default function App() {
     setIsSubmitting(true)
 
     try {
-      const response = await apiFetch('/api/categories', {
+      const response = await apiFetch(restaurantApiPath('/api/categories'), {
         method: 'POST',
-        body: JSON.stringify({ name: categoryForm.name }),
+        body: JSON.stringify({ name: categoryForm.name, restaurantSlug: restaurant?.slug }),
       })
 
       setCategories(response.categories)
@@ -402,9 +456,9 @@ export default function App() {
     setIsSubmitting(true)
 
     try {
-      const response = await apiFetch(`/api/categories/${category.id}`, {
+      const response = await apiFetch(restaurantApiPath(`/api/categories/${category.id}`), {
         method: 'PUT',
-        body: JSON.stringify({ name: nextName, previousName: category.name }),
+        body: JSON.stringify({ name: nextName, previousName: category.name, restaurantSlug: restaurant?.slug }),
       })
 
       setCategories(response.categories)
@@ -437,9 +491,9 @@ export default function App() {
     setIsSubmitting(true)
 
     try {
-      const response = await apiFetch('/api/categories/reorder', {
+      const response = await apiFetch(restaurantApiPath('/api/categories/reorder'), {
         method: 'PUT',
-        body: JSON.stringify({ categoryIds: reordered.map((item) => item.id) }),
+        body: JSON.stringify({ categoryIds: reordered.map((item) => item.id), restaurantSlug: restaurant?.slug }),
       })
 
       setCategories(response.categories)
@@ -464,7 +518,7 @@ export default function App() {
     setIsSubmitting(true)
 
     try {
-      await apiFetch(`/api/categories/${category.id}`, { method: 'DELETE' })
+      await apiFetch(restaurantApiPath(`/api/categories/${category.id}`), { method: 'DELETE' })
       const nextCategories = categories.filter((item) => item.id !== category.id)
       setCategories(nextCategories)
 
@@ -480,8 +534,8 @@ export default function App() {
     }
   }
 
-  const heroEyebrow = adminView ? 'Aster Hotel Staff Access' : 'Welcome to Aster Hotel'
-  const heroTitle = adminView ? `${restaurant?.name || 'Aster Hotel'} Admin` : restaurant?.name || 'Hotel Menu System'
+  const heroEyebrow = adminView ? `${restaurant?.name || 'Restaurant'} Staff Access` : `Welcome to ${restaurant?.name || 'the Restaurant'}`
+  const heroTitle = adminView ? `${restaurant?.name || 'Restaurant'} Admin` : restaurant?.name || 'Restaurant Menu System'
   const heroText = adminView
     ? 'Sign in to manage dishes, keep categories organized, and print live QR codes for every table without exposing hotel staff tools to guests.'
     : 'Discover signature dishes, fresh breakfast favorites, and table-side service designed to make every stay at the hotel feel easy, warm, and memorable.'
@@ -589,6 +643,7 @@ export default function App() {
           onLogout={handleLogout}
           form={form}
           onFormChange={handleFormChange}
+          onImageUpload={handleImageUpload}
           onSubmit={handleSubmit}
           editingId={editingId}
           onCancelEdit={() => resetForm()}
@@ -609,6 +664,7 @@ export default function App() {
           statusMessage={statusMessage}
           errorMessage={errorMessage}
           isSubmitting={isSubmitting}
+          isUploadingImage={isUploadingImage}
         />
       )}
     </main>

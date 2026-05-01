@@ -18,14 +18,34 @@ The main idea is simple:
 
 ## Main features
 
-- Public guest menu available at `/`
-- Staff workspace available at `/admin`
+- Public guest menu available at `/r/<restaurant-slug>`
+- Staff workspace available at `/admin/<restaurant-slug>`
 - Django API endpoints under `/api/...`
 - Django built-in admin available at `/django-admin/`
 - `/manage/` redirects to `/django-admin/`
 - CSRF-protected write actions for the admin workspace
 - QR endpoint for generating links for the current deployed site
 - Health check endpoint at `/api/health`
+
+## Adding Restaurants
+
+The system supports multiple restaurants on one deployment. Each restaurant has its own public menu URL, staff workspace, menu categories, menu items, and QR code.
+
+1. Sign in as the system admin at `/django-admin/`.
+2. Open `Restaurants` and create a restaurant. Set the name, slug, tagline, currency, and hero message.
+3. In the restaurant form, assign the staff users who can manage that restaurant in the `admins` field.
+4. Save the restaurant. A default QR/table record is created automatically.
+5. Add categories for that restaurant.
+6. Give the restaurant staff this URL: `/admin/<restaurant-slug>`.
+7. Give customers or printed QR codes this URL: `/r/<restaurant-slug>`.
+
+Example for a restaurant with slug `blue-cafe`:
+
+- Guest menu: `/r/blue-cafe`
+- Staff workspace: `/admin/blue-cafe`
+- QR image endpoint: `/api/tables/blue-cafe-menu/qr?target=https://your-domain.com/r/blue-cafe`
+
+Superusers can manage every restaurant. Normal staff users can only edit restaurants assigned to them.
 
 ## Tech stack
 
@@ -166,8 +186,8 @@ python /app/backend/manage.py createsuperuser
 
 Example routes after deployment:
 
-- Guest menu: `https://scanner-web.onrender.com/`
-- Staff workspace: `https://scanner-web.onrender.com/admin`
+- Guest menu: `https://scanner-web.onrender.com/r/aster-hotel`
+- Staff workspace: `https://scanner-web.onrender.com/admin/aster-hotel`
 - Django admin: `https://scanner-web.onrender.com/django-admin/`
 - Django admin shortcut: `https://scanner-web.onrender.com/manage/`
 
@@ -221,8 +241,8 @@ Use the real server address or domain where the app is deployed.
 
 Example:
 
-- Guest menu: `http://menu.example.com/`
-- Staff workspace: `http://menu.example.com/admin`
+- Guest menu: `http://menu.example.com/r/aster-hotel`
+- Staff workspace: `http://menu.example.com/admin/aster-hotel`
 - Django admin: `http://menu.example.com/django-admin/`
 - Django admin shortcut: `http://menu.example.com/manage/`
 
@@ -266,8 +286,10 @@ Example deployment assets:
 
 ## Important routes
 
-- Guest menu: `/`
-- Staff workspace: `/admin`
+- Guest menu: `/r/<restaurant-slug>`
+- Staff workspace: `/admin/<restaurant-slug>`
+- Default restaurant fallback: `/`
+- Default admin fallback: `/admin`
 - Django admin: `/django-admin/`
 - Django admin shortcut: `/manage/`
 - Health check: `/api/health`

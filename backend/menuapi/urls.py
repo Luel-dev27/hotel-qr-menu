@@ -12,6 +12,7 @@ from .views import (
     menu_detail,
     menu_list,
     table_qr,
+    upload_menu_image,
 )
 
 urlpatterns = [
@@ -23,6 +24,7 @@ urlpatterns = [
     path('auth/logout', auth_logout, name='auth-logout'),
     path('menu', menu_list, name='menu-list'),
     path('menu/<int:item_id>', menu_detail, name='menu-detail'),
+    path('menu/images', upload_menu_image, name='menu-image-upload'),
     path('categories', category_list, name='category-list'),
     path('categories/reorder', category_reorder, name='category-reorder'),
     path('categories/<int:category_id>', category_detail, name='category-detail'),

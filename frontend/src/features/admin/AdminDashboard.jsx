@@ -9,6 +9,7 @@ export function AdminDashboard({
   onLogout,
   form,
   onFormChange,
+  onImageUpload,
   onSubmit,
   editingId,
   onCancelEdit,
@@ -29,6 +30,7 @@ export function AdminDashboard({
   statusMessage,
   errorMessage,
   isSubmitting,
+  isUploadingImage,
 }) {
   return (
     <section id="admin-panel" className="panel section-panel">
@@ -129,9 +131,25 @@ export function AdminDashboard({
                 </label>
 
                 <label>
-                  Image URL
+                  Image URL or uploaded image
                   <input name="image" value={form.image} onChange={onFormChange} placeholder="https://..." />
                 </label>
+
+                <div className="image-upload-row">
+                  {form.image ? <img src={form.image} alt="Selected menu item" /> : <div className="image-placeholder" />}
+                  <div>
+                    <label className="secondary-button upload-button">
+                      <input
+                        type="file"
+                        accept="image/png,image/jpeg,image/webp,image/gif"
+                        onChange={onImageUpload}
+                        disabled={isUploadingImage || isSubmitting}
+                      />
+                      {isUploadingImage ? 'Uploading...' : 'Upload food or drink image'}
+                    </label>
+                    <p className="field-note">JPG, PNG, WebP, or GIF up to 5 MB.</p>
+                  </div>
+                </div>
 
                 <div className="check-grid">
                   <label className="switch-row">

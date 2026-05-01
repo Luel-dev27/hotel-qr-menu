@@ -2,10 +2,14 @@ import json
 from decimal import Decimal, InvalidOperation
 from io import BytesIO
 from urllib.parse import urlparse
+from uuid import uuid4
 
 from django.contrib.auth import authenticate, get_user_model, login, logout
+from django.core.files.storage import default_storage
+from django.core.files.uploadedfile import UploadedFile
 from django.middleware.csrf import get_token
 from django.http import HttpResponse, JsonResponse
+from django.utils.text import get_valid_filename
 from django.views.decorators.csrf import ensure_csrf_cookie
 from django.views.decorators.http import require_GET, require_http_methods
 import qrcode
@@ -15,6 +19,8 @@ from .models import Category, MenuItem, Restaurant, Table
 
 
 User = get_user_model()
+ALLOWED_IMAGE_TYPES = {'image/jpeg', 'image/png', 'image/webp', 'image/gif'}
+MAX_IMAGE_SIZE = 5 * 1024 * 1024
 
 
 def parse_json(request):
@@ -40,17 +46,50 @@ def require_admin_session(request):
     return None
 
 
+def get_requested_restaurant(request):
+    slug = request.GET.get('restaurant', '').strip()
+    if request.method in {'POST', 'PUT', 'PATCH'} and not slug and request.content_type == 'application/json':
+        try:
+            slug = parse_json(request).get('restaurantSlug', '')
+        except json.JSONDecodeError:
+            slug = ''
+
+    queryset = Restaurant.objects.all()
+    if slug:
+        return queryset.filter(slug=slug).first()
+    return queryset.order_by('id').first()
+
+
+def require_restaurant_admin(request, restaurant):
+    auth_error = require_admin_session(request)
+    if auth_error:
+        return auth_error
+    if not restaurant:
+        return json_error('Restaurant not found.', status=404)
+    if request.user.is_superuser:
+        return None
+    if not restaurant.admins.filter(id=request.user.id).exists():
+        return json_error('You do not have access to this restaurant.', status=403)
+    return None
+
+
 def serialize_admin(user):
     return {
         'id': user.id,
         'username': user.username,
         'name': user.get_full_name() or user.username,
+        'isSuperuser': user.is_superuser,
+        'restaurants': [
+            {'id': item.id, 'name': item.name, 'slug': item.slug}
+            for item in (Restaurant.objects.all() if user.is_superuser else user.restaurants.all())
+        ],
     }
 
 
 def serialize_category(category):
     return {
         'id': category.id,
+        'restaurantSlug': category.restaurant.slug,
         'name': category.name,
         'order': category.order,
     }
@@ -59,6 +98,7 @@ def serialize_category(category):
 def serialize_menu_item(item):
     return {
         'id': item.id,
+        'restaurantSlug': item.restaurant.slug,
         'name': item.name,
         'category': item.category.name,
         'price': float(item.price),
@@ -73,31 +113,42 @@ def serialize_menu_item(item):
 def serialize_table(table):
     return {
         'id': table.id,
+        'restaurantSlug': table.restaurant.slug,
         'number': table.number,
         'label': table.label,
         'slug': table.slug,
-        'path': '/',
+        'path': f'/r/{table.restaurant.slug}',
     }
+
+
+def build_absolute_media_url(request, path):
+    return request.build_absolute_uri(default_storage.url(path))
 
 
 @ensure_csrf_cookie
 @require_GET
 def bootstrap(request):
     get_token(request)
-    restaurant = Restaurant.objects.first()
+    restaurant = get_requested_restaurant(request)
+    if not restaurant:
+        return json_error('Restaurant not found.', status=404)
+
     return JsonResponse(
         {
             'restaurant': {
+                'id': restaurant.id,
                 'name': restaurant.name,
+                'slug': restaurant.slug,
                 'tagline': restaurant.tagline,
                 'currency': restaurant.currency,
                 'heroMessage': restaurant.hero_message,
-            }
-            if restaurant
-            else None,
-            'categories': [serialize_category(item) for item in Category.objects.all()],
-            'menuItems': [serialize_menu_item(item) for item in MenuItem.objects.select_related('category').all()],
-            'tables': [serialize_table(item) for item in Table.objects.all()],
+            },
+            'categories': [serialize_category(item) for item in restaurant.categories.all()],
+            'menuItems': [
+                serialize_menu_item(item)
+                for item in restaurant.menu_items.select_related('category').all()
+            ],
+            'tables': [serialize_table(item) for item in restaurant.tables.all()],
         }
     )
 
@@ -105,7 +156,7 @@ def bootstrap(request):
 @require_GET
 def table_qr(request, slug):
     try:
-        table = Table.objects.get(slug=slug)
+        table = Table.objects.select_related('restaurant').get(slug=slug)
     except Table.DoesNotExist:
         return json_error('Table not found.', status=404)
 
@@ -131,6 +182,30 @@ def table_qr(request, slug):
     response = HttpResponse(svg, content_type='image/svg+xml')
     response['Content-Disposition'] = f'inline; filename="{table.slug}-qr.svg"'
     return response
+
+
+@require_http_methods(['POST'])
+def upload_menu_image(request):
+    restaurant = get_requested_restaurant(request)
+    auth_error = require_restaurant_admin(request, restaurant)
+    if auth_error:
+        return auth_error
+
+    image = request.FILES.get('image')
+    if not isinstance(image, UploadedFile):
+        return json_error('Choose an image file to upload.')
+
+    if image.content_type not in ALLOWED_IMAGE_TYPES:
+        return json_error('Upload a JPG, PNG, WebP, or GIF image.')
+
+    if image.size > MAX_IMAGE_SIZE:
+        return json_error('Image must be 5 MB or smaller.')
+
+    filename = get_valid_filename(image.name)
+    extension = filename.rsplit('.', 1)[-1].lower() if '.' in filename else 'jpg'
+    saved_path = default_storage.save(f'menu-items/{uuid4().hex}.{extension}', image)
+
+    return JsonResponse({'imageUrl': build_absolute_media_url(request, saved_path)}, status=201)
 
 
 @require_http_methods(['POST'])
@@ -167,11 +242,15 @@ def auth_logout(request):
 
 @require_http_methods(['GET', 'POST'])
 def menu_list(request):
+    restaurant = get_requested_restaurant(request)
+    if not restaurant:
+        return json_error('Restaurant not found.', status=404)
+
     if request.method == 'GET':
-        items = MenuItem.objects.select_related('category').all()
+        items = restaurant.menu_items.select_related('category').all()
         return JsonResponse({'menuItems': [serialize_menu_item(item) for item in items]})
 
-    auth_error = require_admin_session(request)
+    auth_error = require_restaurant_admin(request, restaurant)
     if auth_error:
         return auth_error
 
@@ -182,7 +261,7 @@ def menu_list(request):
         return json_error('Category is required.')
 
     try:
-        category = Category.objects.get(name=category_name)
+        category = restaurant.categories.get(name=category_name)
     except Category.DoesNotExist:
         return json_error('Choose a valid category before saving the item.')
 
@@ -193,6 +272,7 @@ def menu_list(request):
 
     item = MenuItem.objects.create(
         name=str(payload.get('name', '')).strip(),
+        restaurant=restaurant,
         category=category,
         price=price,
         description=str(payload.get('description', '')).strip(),
@@ -206,12 +286,13 @@ def menu_list(request):
 
 @require_http_methods(['PUT', 'DELETE'])
 def menu_detail(request, item_id):
-    auth_error = require_admin_session(request)
+    restaurant = get_requested_restaurant(request)
+    auth_error = require_restaurant_admin(request, restaurant)
     if auth_error:
         return auth_error
 
     try:
-        item = MenuItem.objects.select_related('category').get(id=item_id)
+        item = restaurant.menu_items.select_related('category').get(id=item_id)
     except MenuItem.DoesNotExist:
         return json_error('Menu item not found.', status=404)
 
@@ -223,7 +304,7 @@ def menu_detail(request, item_id):
     category_name = str(payload.get('category', '')).strip()
 
     try:
-        category = Category.objects.get(name=category_name)
+        category = restaurant.categories.get(name=category_name)
         price = Decimal(str(payload.get('price')))
     except Category.DoesNotExist:
         return json_error('Choose a valid category before saving the item.')
@@ -245,10 +326,14 @@ def menu_detail(request, item_id):
 
 @require_http_methods(['GET', 'POST'])
 def category_list(request):
-    if request.method == 'GET':
-        return JsonResponse({'categories': [serialize_category(item) for item in Category.objects.all()]})
+    restaurant = get_requested_restaurant(request)
+    if not restaurant:
+        return json_error('Restaurant not found.', status=404)
 
-    auth_error = require_admin_session(request)
+    if request.method == 'GET':
+        return JsonResponse({'categories': [serialize_category(item) for item in restaurant.categories.all()]})
+
+    auth_error = require_restaurant_admin(request, restaurant)
     if auth_error:
         return auth_error
 
@@ -256,41 +341,43 @@ def category_list(request):
     name = str(payload.get('name', '')).strip()
     if not name:
         return json_error('Category name is required.')
-    if Category.objects.filter(name__iexact=name).exists():
+    if restaurant.categories.filter(name__iexact=name).exists():
         return json_error('Category already exists.', status=409)
 
-    last_order = Category.objects.order_by('-order').values_list('order', flat=True).first() or 0
-    category = Category.objects.create(name=name, order=last_order + 1)
-    categories = [serialize_category(item) for item in Category.objects.all()]
+    last_order = restaurant.categories.order_by('-order').values_list('order', flat=True).first() or 0
+    category = Category.objects.create(restaurant=restaurant, name=name, order=last_order + 1)
+    categories = [serialize_category(item) for item in restaurant.categories.all()]
     return JsonResponse({'category': serialize_category(category), 'categories': categories}, status=201)
 
 
 @require_http_methods(['PUT'])
 def category_reorder(request):
-    auth_error = require_admin_session(request)
+    restaurant = get_requested_restaurant(request)
+    auth_error = require_restaurant_admin(request, restaurant)
     if auth_error:
         return auth_error
 
     payload = parse_json(request)
     category_ids = payload.get('categoryIds', [])
-    categories = list(Category.objects.all())
+    categories = list(restaurant.categories.all())
     if len(category_ids) != len(categories):
         return json_error('A full category order is required.')
 
     for index, category_id in enumerate(category_ids, start=1):
-        Category.objects.filter(id=category_id).update(order=index)
+        restaurant.categories.filter(id=category_id).update(order=index)
 
-    return JsonResponse({'categories': [serialize_category(item) for item in Category.objects.all()]})
+    return JsonResponse({'categories': [serialize_category(item) for item in restaurant.categories.all()]})
 
 
 @require_http_methods(['PUT', 'DELETE'])
 def category_detail(request, category_id):
-    auth_error = require_admin_session(request)
+    restaurant = get_requested_restaurant(request)
+    auth_error = require_restaurant_admin(request, restaurant)
     if auth_error:
         return auth_error
 
     try:
-        category = Category.objects.get(id=category_id)
+        category = restaurant.categories.get(id=category_id)
     except Category.DoesNotExist:
         return json_error('Category not found.', status=404)
 
@@ -307,4 +394,7 @@ def category_detail(request, category_id):
 
     category.name = next_name
     category.save()
-    return JsonResponse({'category': serialize_category(category), 'categories': [serialize_category(item) for item in Category.objects.all()]})
+    return JsonResponse({
+        'category': serialize_category(category),
+        'categories': [serialize_category(item) for item in restaurant.categories.all()],
+    })

@@ -12,9 +12,13 @@ function getCookie(name) {
 
 export async function apiFetch(path, options = {}) {
   const method = (options.method || 'GET').toUpperCase()
+  const isFormData = options.body instanceof FormData
   const headers = {
-    'Content-Type': 'application/json',
     ...(options.headers || {}),
+  }
+
+  if (!isFormData) {
+    headers['Content-Type'] = 'application/json'
   }
 
   if (!['GET', 'HEAD', 'OPTIONS', 'TRACE'].includes(method)) {
